@@ -1,0 +1,13 @@
+// $Id$
+// vim:ft=javascript
+
+// If your extension references something external, use ARG_WITH
+// ARG_WITH("odbx", "for obdx support", "no");
+
+// Otherwise, use ARG_ENABLE
+// ARG_ENABLE("odbx", "enable odbx support", "no");
+
+if (PHP_ODBX != "no") {
+	EXTENSION("odbx", "odbx.c");
+}
+
