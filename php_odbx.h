@@ -34,6 +34,7 @@ extern zend_module_entry odbx_module_entry;
 #include "TSRM.h"
 #endif
 
+
 PHP_MINIT_FUNCTION(odbx);
 PHP_MSHUTDOWN_FUNCTION(odbx);
 PHP_RINIT_FUNCTION(odbx);
@@ -41,6 +42,8 @@ PHP_RSHUTDOWN_FUNCTION(odbx);
 PHP_MINFO_FUNCTION(odbx);
 
 PHP_FUNCTION(odbx_init);
+PHP_FUNCTION(odbx_finish);
+PHP_FUNCTION(odbx_bind);
 
 #define PHP_ODBX_VERSION "2.2.5"
 
@@ -50,9 +53,14 @@ PHP_FUNCTION(odbx_init);
 */
 
 ZEND_BEGIN_MODULE_GLOBALS(odbx)
-	long default_link;
+
+
+        long default_link; /* default link when connection is omitted */
         long num_links,num_persistent;
         long max_links,max_persistent;
+	long allow_persistent;
+        //int le_lofp,le_string;
+
 	//char *global_string;
 ZEND_END_MODULE_GLOBALS(odbx)
 
