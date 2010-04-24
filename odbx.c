@@ -46,7 +46,6 @@
 #include <sys/types.h>
 #endif
 
-#define SAFE_STRING(s) ((s)?(s):"")
 #define CHECK_DEFAULT_LINK(x) if ((x) == -1) { php_error_docref(NULL TSRMLS_CC, E_WARNING, "No OpenDBX link opened yet"); }
 
 #define ODBX_DO_INIT_RETURN_FALSE()         \
@@ -109,7 +108,7 @@ PHP_INI_BEGIN()
 
 	STD_PHP_INI_ENTRY_EX("odbx.max_persistent",       "-1",  PHP_INI_SYSTEM, OnUpdateLong, max_persistent,        zend_odbx_globals, odbx_globals, display_link_numbers)
 	STD_PHP_INI_ENTRY_EX("odbx.max_links",            "-1",  PHP_INI_SYSTEM, OnUpdateLong, max_links,             zend_odbx_globals, odbx_globals, display_link_numbers)
-
+	STD_PHP_INI_ENTRY("odbx.default_host", "127.0.0.1", PHP_INI_SYSTEM, OnUpdateString, default_host, zend_odbx_globals, odbx_globals)
     //STD_PHP_INI_ENTRY("odbx.global_value",      "42", PHP_INI_ALL, OnUpdateLong, global_value, zend_odbx_globals, odbx_globals)
     //STD_PHP_INI_ENTRY("odbx.global_string", "foobar", PHP_INI_ALL, OnUpdateString, global_string, zend_odbx_globals, odbx_globals)
 PHP_INI_END()
@@ -251,14 +250,14 @@ PHP_FUNCTION(odbx_init)
 
 	zval *odbx_link = NULL;
 	char *backend=NULL, *host=NULL, *port=NULL;
-	int backend_len, host_len, port_len;
 	zval **args[4];
 	zend_bool persistent=0;
 
 	smart_str str = {0};
-	int i, arg_offset, persistent_arg=0;
+	int i;
 
-	odbx_t *odbx;
+	odbx_t* odbx;
+	int err;
 
         if (ZEND_NUM_ARGS() < 1 || ZEND_NUM_ARGS() > 4
                         || zend_get_parameters_array_ex(ZEND_NUM_ARGS(), args) == FAILURE) {
@@ -267,12 +266,9 @@ PHP_FUNCTION(odbx_init)
 
 	smart_str_appends(&str, "odbx");
 
-	arg_offset = ZEND_NUM_ARGS();
         for (i = 0; i < ZEND_NUM_ARGS(); i++) {
                 if (Z_TYPE_PP(args[i]) == IS_BOOL) {
-			persistent = Z_STRVAL_PP(args[i]);
-			arg_offset = i+1;
-			persistent_arg = 1;
+			persistent = Z_BVAL_PP(args[i]);
 			break;
                 }
 		else
@@ -280,23 +276,33 @@ PHP_FUNCTION(odbx_init)
 			convert_to_string_ex(args[i]);
 			smart_str_appendc(&str, '_');
 			smart_str_appendl(&str, Z_STRVAL_PP(args[i]), Z_STRLEN_PP(args[i]));
+
+			/* switch args*/
+			switch(i) {
+			case 0 :
+				backend = Z_STRVAL_PP(args[0]);
+				break;
+			case 1 :
+				host = Z_STRVAL_PP(args[1]);
+				break;
+			case 2 :
+				port = Z_STRVAL_PP(args[2]);
+				break;
+			default :
+				break;
+			}
 		}
         }
 
         smart_str_0(&str);
 
-	switch((persistent_arg ? arg_offset-1 : arg_offset)) {
-	case 0 :
-	case 1 :
-		backend = Z_STRVAL_PP(args[0]);
-	case 2 :
-		backend = Z_STRVAL_PP(args[0]);
-		host = Z_STRVAL_PP(args[1]);
-	case 3 :
-		backend = Z_STRVAL_PP(args[0]);
-		host = Z_STRVAL_PP(args[1]);
-		port = Z_STRVAL_PP(args[2]);
-		break;
+
+	if (host == NULL) {
+		host = ODBX_G(default_host);
+	}
+
+	if (port == NULL) {
+		port = "";
 	}
 
         if (persistent && ODBX_G(allow_persistent)) {
@@ -318,7 +324,9 @@ PHP_FUNCTION(odbx_init)
                         }
 
                         /* create the link */
-			if ( odbx_init( odbx, backend, host, port ) < 0 ) {
+			if( ( err = odbx_init( &odbx, backend, host, port ) ) < 0 ) {
+                                php_error_docref(NULL TSRMLS_CC, E_WARNING,
+                                                                 "odbx_init(): %s", odbx_error( odbx, err ));
 				ODBX_DO_INIT_RETURN_FALSE();
 			}
 
@@ -387,7 +395,9 @@ PHP_FUNCTION(odbx_init)
 
 
 		/* create the link */
-		if ( odbx_init( odbx, backend, host, port ) < 0 ) {
+		if( ( err = odbx_init( &odbx, backend, host, port ) ) < 0 ) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING,
+							 "odbx_init(): %s", odbx_error( odbx, err ));
 			ODBX_DO_INIT_RETURN_FALSE();
 		}
 
@@ -405,12 +415,10 @@ PHP_FUNCTION(odbx_init)
                 new_index_ptr.ptr = (void *) Z_LVAL_P(return_value);
                 Z_TYPE(new_index_ptr) = le_index_ptr;
 
-		/*
 		if (zend_hash_update(&EG(regular_list), str.c, str.len+1,(void *) &new_index_ptr, sizeof(zend_rsrc_list_entry), NULL)==FAILURE) {
-			//free(odbx);
+			free(odbx);
 			ODBX_DO_INIT_RETURN_FALSE();
                 }
-		*/
 
                 ODBX_G(num_links)++;
 	}

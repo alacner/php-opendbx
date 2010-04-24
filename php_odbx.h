@@ -61,6 +61,7 @@ ZEND_BEGIN_MODULE_GLOBALS(odbx)
 	long allow_persistent;
         //int le_lofp,le_string;
 
+	char *default_host;
 	//char *global_string;
 ZEND_END_MODULE_GLOBALS(odbx)
 
