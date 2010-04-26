@@ -44,8 +44,13 @@ PHP_MINFO_FUNCTION(odbx);
 PHP_FUNCTION(odbx_init);
 PHP_FUNCTION(odbx_finish);
 PHP_FUNCTION(odbx_bind);
+PHP_FUNCTION(odbx_error);
+PHP_FUNCTION(odbx_error_type);
+PHP_FUNCTION(odbx_unbind);
+PHP_FUNCTION(odbx_capabilities);
+PHP_FUNCTION(odbx_escape);
 
-#define PHP_ODBX_VERSION "2.2.5"
+#define PHP_ODBX_VERSION "1.0.0"
 
 /* 
   	Declare any global variables you may need between the BEGIN

@@ -69,6 +69,12 @@ zend_function_entry odbx_functions[] = {
 	PHP_FE(odbx_init, NULL)
 	PHP_FE(odbx_finish, NULL)
 	PHP_FE(odbx_bind, NULL)
+	PHP_FE(odbx_error, NULL)
+	PHP_FE(odbx_error_type, NULL)
+	PHP_FE(odbx_unbind, NULL)
+	PHP_FE(odbx_capabilities, NULL)
+	PHP_FE(odbx_escape, NULL)
+	//PHP_FE(odbx_, NULL)
 	{NULL, NULL, NULL}
 };
 /* }}} */
@@ -190,9 +196,112 @@ PHP_MINIT_FUNCTION(odbx)
         le_link = zend_register_list_destructors_ex(_close_odbx_link, NULL, "odbx link", module_number);
 	le_plink = zend_register_list_destructors_ex(NULL, _close_odbx_plink, "odbx link persistent", module_number);
         Z_TYPE(odbx_module_entry) = type;
-#if 0
-        REGISTER_LONG_CONSTANT("MYSQL_ASSOC", MYSQL_ASSOC, CONST_CS | CONST_PERSISTENT);
-#endif
+
+
+	/*
+	 *  Extended capabilities supported by the backends
+	 *  0x0000-0x00ff: Well known capabilities
+	*/
+        REGISTER_LONG_CONSTANT("ODBX_CAP_BASIC", ODBX_CAP_BASIC, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_CAP_LO", ODBX_CAP_LO, CONST_CS | CONST_PERSISTENT);
+	/*
+	 * ODBX bind type
+	*/
+        REGISTER_LONG_CONSTANT("ODBX_BIND_SIMPLE", ODBX_BIND_SIMPLE, CONST_CS | CONST_PERSISTENT);
+	/*
+	 *  ODBX error types
+	*/
+        REGISTER_LONG_CONSTANT("ODBX_ERR_SUCCESS", ODBX_ERR_SUCCESS, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_BACKEND", ODBX_ERR_BACKEND, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_NOCAP", ODBX_ERR_NOCAP, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_PARAM", ODBX_ERR_PARAM, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_NOMEM", ODBX_ERR_NOMEM, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_SIZE", ODBX_ERR_SIZE, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_NOTEXIST", ODBX_ERR_NOTEXIST, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_NOOP", ODBX_ERR_NOOP, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_OPTION", ODBX_ERR_OPTION, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_OPTRO", ODBX_ERR_OPTRO, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_OPTWR", ODBX_ERR_OPTWR, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_RESULT", ODBX_ERR_RESULT, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_NOTSUP", ODBX_ERR_NOTSUP, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ERR_HANDLE", ODBX_ERR_HANDLE, CONST_CS | CONST_PERSISTENT);
+	/*
+	 *  ODBX result/fetch return values
+	*/
+        REGISTER_LONG_CONSTANT("ODBX_RES_DONE", ODBX_RES_DONE, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_RES_TIMEOUT", ODBX_RES_TIMEOUT, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_RES_NOROWS", ODBX_RES_NOROWS, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_RES_ROWS", ODBX_RES_ROWS, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ROW_DONE", ODBX_ROW_DONE, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_ROW_NEXT", ODBX_ROW_NEXT, CONST_CS | CONST_PERSISTENT);
+	/*
+	 *  ODBX options
+	 *
+	 *  0x0000 - 0x1fff reserved for api options
+	 *  0x2000 - 0x3fff reserved for api extension options
+	 *  0x4000 - 0xffff reserved for vendor specific and experimental options
+	*/
+	/* Informational options */
+        REGISTER_LONG_CONSTANT("ODBX_OPT_API_VERSION", ODBX_OPT_API_VERSION, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_OPT_THREAD_SAFE", ODBX_OPT_THREAD_SAFE, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_OPT_LIB_VERSION", ODBX_OPT_LIB_VERSION, CONST_CS | CONST_PERSISTENT);
+	/* Security related options */
+        REGISTER_LONG_CONSTANT("ODBX_OPT_TLS", ODBX_OPT_TLS, CONST_CS | CONST_PERSISTENT);
+	/* Implemented options */
+        REGISTER_LONG_CONSTANT("ODBX_OPT_MULTI_STATEMENTS", ODBX_OPT_MULTI_STATEMENTS, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_OPT_PAGED_RESULTS", ODBX_OPT_PAGED_RESULTS, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_OPT_COMPRESS", ODBX_OPT_COMPRESS, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_OPT_MODE", ODBX_OPT_MODE, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_OPT_CONNECT_TIMEOUT", ODBX_OPT_CONNECT_TIMEOUT, CONST_CS | CONST_PERSISTENT);
+	/* SSL/TLS related options */
+        REGISTER_LONG_CONSTANT("ODBX_TLS_NEVER", ODBX_TLS_NEVER, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TLS_TRY", ODBX_TLS_TRY, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TLS_ALWAYS", ODBX_TLS_ALWAYS, CONST_CS | CONST_PERSISTENT);
+
+	/*
+	 *  ODBX (SQL2003) data types
+	*/
+        //Exact numeric values:
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_BOOLEAN", ODBX_TYPE_BOOLEAN, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_SMALLINT", ODBX_TYPE_SMALLINT, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_INTEGER", ODBX_TYPE_INTEGER, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_BIGINT", ODBX_TYPE_BIGINT, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_DECIMAL", ODBX_TYPE_DECIMAL, CONST_CS | CONST_PERSISTENT);
+        //Approximate numeric values:
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_REAL", ODBX_TYPE_REAL, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_DOUBLE", ODBX_TYPE_DOUBLE, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_FLOAT", ODBX_TYPE_FLOAT, CONST_CS | CONST_PERSISTENT);
+        //String values:
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_CHAR", ODBX_TYPE_CHAR, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_NCHAR", ODBX_TYPE_NCHAR, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_VARCHAR", ODBX_TYPE_VARCHAR, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_NVARCHAR", ODBX_TYPE_NVARCHAR, CONST_CS | CONST_PERSISTENT);
+        //Large objects:
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_CLOB", ODBX_TYPE_CLOB, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_NCLOB", ODBX_TYPE_NCLOB, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_XML", ODBX_TYPE_XML, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_BLOB", ODBX_TYPE_BLOB, CONST_CS | CONST_PERSISTENT);
+        //Date and time values:
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_TIME", ODBX_TYPE_TIME, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_TIMETZ", ODBX_TYPE_TIMETZ, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_TIMESTAMP", ODBX_TYPE_TIMESTAMP, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_TIMESTAMPTZ", ODBX_TYPE_TIMESTAMPTZ, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_DATE", ODBX_TYPE_DATE, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_INTERVAL", ODBX_TYPE_INTERVAL, CONST_CS | CONST_PERSISTENT);
+        //Arrays and sets:
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_ARRAY", ODBX_TYPE_ARRAY, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_MULTISET", ODBX_TYPE_MULTISET, CONST_CS | CONST_PERSISTENT);
+        //External links:
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_DATALINK", ODBX_TYPE_DATALINK, CONST_CS | CONST_PERSISTENT);
+        //Vendor specific:
+        REGISTER_LONG_CONSTANT("ODBX_TYPE_UNKNOWN", ODBX_TYPE_UNKNOWN, CONST_CS | CONST_PERSISTENT);
+
+	// enable
+        REGISTER_LONG_CONSTANT("ODBX_ENABLE", ODBX_ENABLE, CONST_CS | CONST_PERSISTENT);
+        REGISTER_LONG_CONSTANT("ODBX_DISABLE", ODBX_DISABLE, CONST_CS | CONST_PERSISTENT);
+
+        //REGISTER_LONG_CONSTANT("", );
+
 	return SUCCESS;
 }
 /* }}} */
@@ -235,20 +344,21 @@ PHP_MINFO_FUNCTION(odbx)
 	char buf[32];
 	php_info_print_table_start();
 	php_info_print_table_header(2, "OpenDBX support", "enabled");
+
+        snprintf(buf, sizeof(buf), "%ld", ODBX_G(num_persistent));
+        php_info_print_table_row(2, "Active Persistent Links", buf);
         snprintf(buf, sizeof(buf), "%ld", ODBX_G(num_links));
         php_info_print_table_row(2, "Active Links", buf);
+
 	php_info_print_table_end();
 
-	/* Remove comments if you have entries in php.ini
 	DISPLAY_INI_ENTRIES();
-	*/
 }
 /* }}} */
 
 PHP_FUNCTION(odbx_init)
 {
 
-	zval *odbx_link = NULL;
 	char *backend=NULL, *host=NULL, *port=NULL;
 	zval **args[4];
 	zend_bool persistent=0;
@@ -324,7 +434,7 @@ PHP_FUNCTION(odbx_init)
                         }
 
                         /* create the link */
-			if( ( err = odbx_init( &odbx, backend, host, port ) ) < 0 ) {
+			if ( ( err = odbx_init( &odbx, backend, host, port ) ) < 0 ) {
                                 php_error_docref(NULL TSRMLS_CC, E_WARNING,
                                                                  "odbx_init(): %s", odbx_error( odbx, err ));
 				ODBX_DO_INIT_RETURN_FALSE();
@@ -363,7 +473,7 @@ PHP_FUNCTION(odbx_init)
                  * if it doesn't, open a new opendbx link, add it to the resource list,
                  * and add a pointer to it with str.c as the key.
                  */
-                if (persistent 
+                if ( ! persistent 
 			&& zend_hash_find(&EG(regular_list), str.c, str.len+1,(void **) &index_ptr)==SUCCESS) {
                         int type;
                         long link;
@@ -423,21 +533,13 @@ PHP_FUNCTION(odbx_init)
                 ODBX_G(num_links)++;
 	}
 
-	//smart_str_free(&str);
+	smart_str_free(&str);
         php_odbx_set_default_link(Z_LVAL_P(return_value) TSRMLS_CC);
 
 }
 /* }}} */
 
-
-PHP_FUNCTION(odbx_finish)
-{
-}
-PHP_FUNCTION(odbx_bind)
-{
-}
-#if 0
-/* {{{ proto bool mysql_close([int link_identifier])
+/* {{{ 
    Close a OpenDBX connection */
 PHP_FUNCTION(odbx_finish)
 {
@@ -448,6 +550,7 @@ PHP_FUNCTION(odbx_finish)
         switch (ZEND_NUM_ARGS()) {
                 case 0:
                         id = ODBX_G(default_link);
+			CHECK_DEFAULT_LINK(id);
                         break;
                 case 1:
                         if (zend_get_parameters_ex(1, &odbx_link)==FAILURE) {
@@ -460,16 +563,18 @@ PHP_FUNCTION(odbx_finish)
                         break;
         }
 
-        ZEND_FETCH_RESOURCE2(odbx, odbx_t*, odbx_link, id, "OpenDBX-Link", le_link, le_plink);
+        if (odbx_link == NULL && id == -1) {
+                RETURN_FALSE;
+        }
+
+        ZEND_FETCH_RESOURCE2(odbx, odbx_t *, odbx_link, id, "OpenDBX Link", le_link, le_plink);
 
         if (id==-1) { /* explicit resource number */
-                //PHPMY_UNBUFFERED_QUERY_CHECK();
                 zend_list_delete(Z_RESVAL_PP(odbx_link));
         }
 
         if (id!=-1
                 || (odbx_link && Z_RESVAL_PP(odbx_link)==ODBX_G(default_link))) {
-                //PHPMY_UNBUFFERED_QUERY_CHECK();
                 zend_list_delete(ODBX_G(default_link));
                 ODBX_G(default_link) = -1;
         }
@@ -477,40 +582,218 @@ PHP_FUNCTION(odbx_finish)
         RETURN_TRUE;
 }
 /* }}} */
+
 PHP_FUNCTION(odbx_bind)
 {
-        zval **database, **who, **cred, **method, **odbx_link;
+	zval **odbx_link;
+        char *database, *who, *cred;
+        int database_len, who_len, cred_len;
+
+        int method;
+
         int id;
         odbx_t *odbx;
 
-        switch(ZEND_NUM_ARGS()) {
-                case 4:
-                        if (zend_get_parameters_ex(4, &database, &who, &cred, &method)==FAILURE) {
-                                RETURN_FALSE;
-                        }
-                        id = php_odbx_get_default_link(INTERNAL_FUNCTION_PARAM_PASSTHRU);
-                        CHECK_LINK(id);
-                        break;
-                case 5:
-                        if (zend_get_parameters_ex(5, &odbx_link, &database, &who, &cred, &method)==FAILURE) {
-                                RETURN_FALSE;
-                        }
-                        id = -1;
-                        break;
-                default:
-                        WRONG_PARAM_COUNT;
-                        break;
+        if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+                                             "rsssl", &odbx_link, &database, &database_len, &who, &who_len, &cred, &cred_len, &method) == SUCCESS) {
+                id = -1;
+        } else if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+                                             "sssl", &database, &database_len, &who, &who_len, &cred, &cred_len, &method) == SUCCESS) {
+                odbx_link = NULL;
+                id = ODBX_G(default_link);
+		CHECK_DEFAULT_LINK(id);
+        }
+        else {
+                php_error_docref(NULL TSRMLS_CC, E_WARNING, "Requires 3 or 4 arguments");
+                RETURN_FALSE;
         }
 
-        ZEND_FETCH_RESOURCE2(odbx, odbx_t*, odbx_link, id, "OpenDBX-Link", le_link, le_plink);
 
-        Z_LVAL_P(return_value) = (long) odbx_bind(odbx, database, who, cred, method);
+        if (odbx_link == NULL && id == -1) {
+                RETURN_FALSE;
+        }
+
+        ZEND_FETCH_RESOURCE2(odbx, odbx_t *, &odbx_link, id, "OpenDBX Link", le_link, le_plink);
+
+        Z_LVAL_P(return_value) = odbx_bind(odbx, database, who, cred, method);
         Z_TYPE_P(return_value) = IS_LONG;
 }
-/* }}} */
-#endif
+
+PHP_FUNCTION(odbx_error)
+{
+	zval **odbx_link;
+	int error;
+
+	int id;
+	odbx_t *odbx;
+
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"rl", &odbx_link, &error) == SUCCESS) {
+		id = -1;
+	} else if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"l", &error) == SUCCESS) {
+		odbx_link = NULL;
+		id = ODBX_G(default_link);
+		CHECK_DEFAULT_LINK(id);
+	}
+	else {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Requires 1 or 2 arguments");
+		RETURN_FALSE;
+	}
 
 
+	if (odbx_link == NULL && id == -1) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE2(odbx, odbx_t *, &odbx_link, id, "OpenDBX Link", le_link, le_plink);
+
+
+	Z_STRVAL_P(return_value) = odbx_error(odbx, error);
+	Z_STRLEN_P(return_value) = strlen(Z_STRVAL_P(return_value));
+	Z_STRVAL_P(return_value) = (char *) estrdup(Z_STRVAL_P(return_value));
+	Z_TYPE_P(return_value) = IS_STRING;
+}
+
+
+PHP_FUNCTION(odbx_error_type)
+{
+	zval **odbx_link;
+	int error;
+
+	int id;
+	odbx_t *odbx;
+
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"rl", &odbx_link, &error) == SUCCESS) {
+		id = -1;
+	} else if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"l", &error) == SUCCESS) {
+		odbx_link = NULL;
+		id = ODBX_G(default_link);
+		CHECK_DEFAULT_LINK(id);
+	}
+	else {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Requires 1 or 2 arguments");
+		RETURN_FALSE;
+	}
+
+
+	if (odbx_link == NULL && id == -1) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE2(odbx, odbx_t *, &odbx_link, id, "OpenDBX Link", le_link, le_plink);
+
+
+	Z_LVAL_P(return_value) = odbx_error_type(odbx, error);
+	Z_TYPE_P(return_value) = IS_LONG;
+}
+
+
+PHP_FUNCTION(odbx_capabilities)
+{
+	zval **odbx_link;
+	unsigned int cap;
+
+	int id;
+	odbx_t *odbx;
+
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"rl", &odbx_link, &cap) == SUCCESS) {
+		id = -1;
+	} else if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"l", &cap) == SUCCESS) {
+		odbx_link = NULL;
+		id = ODBX_G(default_link);
+		CHECK_DEFAULT_LINK(id);
+	}
+	else {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Requires 1 or 2 arguments");
+		RETURN_FALSE;
+	}
+
+
+	if (odbx_link == NULL && id == -1) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE2(odbx, odbx_t *, &odbx_link, id, "OpenDBX Link", le_link, le_plink);
+
+
+	Z_LVAL_P(return_value) = odbx_capabilities(odbx, cap);
+	Z_TYPE_P(return_value) = IS_LONG;
+}
+
+PHP_FUNCTION(odbx_escape)
+{
+	zval **odbx_link;
+	char *from = NULL;//, *to = NULL;
+	unsigned long from_len, to_len;
+
+	int id;
+	odbx_t *odbx;
+
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"rs", &odbx_link, &from, &from_len) == SUCCESS) {
+		id = -1;
+	} else if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"s", &from, &from_len) == SUCCESS) {
+		odbx_link = NULL;
+		id = ODBX_G(default_link);
+		CHECK_DEFAULT_LINK(id);
+	}
+	else {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Requires 1 or 2 arguments");
+		RETURN_FALSE;
+	}
+
+	if (odbx_link == NULL && id == -1) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE2(odbx, odbx_t *, &odbx_link, id, "OpenDBX Link", le_link, le_plink);
+
+        // To be precise, the output buffer must be 2 * size of input + 1 bytes long.
+	char to[2*(from_len+1)];
+	//to = (char *) safe_emalloc(from_len, 2, 1);
+	to_len = sizeof(to);
+
+	//Z_LVAL_P(return_value) = to_len;
+	//Z_TYPE_P(return_value) = IS_LONG;
+	Z_STRVAL_P(return_value) = (char *) odbx_escape(odbx, from, from_len, to, &to_len);
+	Z_STRLEN_P(return_value) = strlen(Z_STRVAL_P(return_value));
+	//Z_STRVAL_P(return_value) = (char *) estrdup(Z_STRVAL_P(return_value));
+	Z_TYPE_P(return_value) = IS_STRING;
+/*
+	*/
+}
+
+PHP_FUNCTION(odbx_unbind)
+{
+	zval **odbx_link;
+	int id;
+	odbx_t *odbx;
+
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"r", &odbx_link) == SUCCESS) {
+		id = -1;
+	} else {
+		odbx_link = NULL;
+		id = ODBX_G(default_link);
+		CHECK_DEFAULT_LINK(id);
+	}
+
+	if (odbx_link == NULL && id == -1) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE2(odbx, odbx_t *, &odbx_link, id, "OpenDBX Link", le_link, le_plink);
+
+
+	Z_LVAL_P(return_value) = odbx_unbind(odbx);
+	Z_TYPE_P(return_value) = IS_LONG;
+}
 
 #endif
 
