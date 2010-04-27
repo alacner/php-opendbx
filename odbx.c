@@ -728,10 +728,11 @@ PHP_FUNCTION(odbx_capabilities)
 PHP_FUNCTION(odbx_escape)
 {
 	zval **odbx_link;
-	char *from = NULL;//, *to = NULL;
-	unsigned long from_len, to_len;
+	char *from = NULL;
+	unsigned long from_len;
 
 	int id;
+	int err;
 	odbx_t *odbx;
 
 	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
@@ -755,18 +756,21 @@ PHP_FUNCTION(odbx_escape)
 	ZEND_FETCH_RESOURCE2(odbx, odbx_t *, &odbx_link, id, "OpenDBX Link", le_link, le_plink);
 
         // To be precise, the output buffer must be 2 * size of input + 1 bytes long.
-	char to[2*(from_len+1)];
-	//to = (char *) safe_emalloc(from_len, 2, 1);
-	to_len = sizeof(to);
 
-	//Z_LVAL_P(return_value) = to_len;
-	//Z_TYPE_P(return_value) = IS_LONG;
-	Z_STRVAL_P(return_value) = (char *) odbx_escape(odbx, from, from_len, to, &to_len);
+        char to[2*(from_len+1)];
+        unsigned long to_len = sizeof(to);
+
+	if( ( err = odbx_escape(odbx, from, (unsigned long)from_len, to, &to_len) ) < 0 ) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING,
+						 "odbx_escape(): %s", odbx_error( odbx, err ));
+                efree(to);
+                RETURN_FALSE;
+	}
+
+	Z_STRVAL_P(return_value) = to;
 	Z_STRLEN_P(return_value) = strlen(Z_STRVAL_P(return_value));
-	//Z_STRVAL_P(return_value) = (char *) estrdup(Z_STRVAL_P(return_value));
+	Z_STRVAL_P(return_value) = (char *) estrdup(Z_STRVAL_P(return_value));
 	Z_TYPE_P(return_value) = IS_STRING;
-/*
-	*/
 }
 
 PHP_FUNCTION(odbx_unbind)
