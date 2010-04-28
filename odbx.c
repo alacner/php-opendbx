@@ -74,6 +74,15 @@ zend_function_entry odbx_functions[] = {
 	PHP_FE(odbx_unbind, NULL)
 	PHP_FE(odbx_capabilities, NULL)
 	PHP_FE(odbx_escape, NULL)
+	PHP_FE(odbx_set_option, NULL)
+	PHP_FE(odbx_get_option, NULL)
+	PHP_FE(odbx_query, NULL)
+	PHP_FE(odbx_column_count, NULL)
+	PHP_FE(odbx_column_name, NULL)
+	PHP_FE(odbx_column_type, NULL)
+	PHP_FE(odbx_field_length, NULL)
+	PHP_FE(odbx_field_value, NULL)
+	PHP_FE(odbx_rows_affected, NULL)
 	//PHP_FE(odbx_, NULL)
 	{NULL, NULL, NULL}
 };
@@ -184,6 +193,16 @@ static void _close_odbx_plink(zend_rsrc_list_entry *rsrc TSRMLS_DC)
 }
 /* }}} */
 
+/* {{{ _free_result
+ */
+static void _free_odbx_result(zend_rsrc_list_entry *rsrc TSRMLS_DC)
+{
+        odbx_result_t *res = (odbx_result_t *)rsrc->ptr;
+
+	odbx_result_finish(res);
+}
+/* }}} */
+
 
 /* {{{ PHP_MINIT_FUNCTION
  */
@@ -192,9 +211,9 @@ PHP_MINIT_FUNCTION(odbx)
 	/* If you have INI entries, uncomment these lines 
 	*/
 	REGISTER_INI_ENTRIES();
-        //le_result = zend_register_list_destructors_ex(_free_odbx_result, NULL, "odbx result", module_number);
         le_link = zend_register_list_destructors_ex(_close_odbx_link, NULL, "odbx link", module_number);
 	le_plink = zend_register_list_destructors_ex(NULL, _close_odbx_plink, "odbx link persistent", module_number);
+        le_result = zend_register_list_destructors_ex(_free_odbx_result, NULL, "odbx result", module_number);
         Z_TYPE(odbx_module_entry) = type;
 
 
@@ -771,6 +790,320 @@ PHP_FUNCTION(odbx_escape)
 	Z_STRLEN_P(return_value) = strlen(Z_STRVAL_P(return_value));
 	Z_STRVAL_P(return_value) = (char *) estrdup(Z_STRVAL_P(return_value));
 	Z_TYPE_P(return_value) = IS_STRING;
+}
+
+PHP_FUNCTION(odbx_set_option)
+{
+	zval **odbx_link;
+	unsigned long option;
+	zval **value;
+
+	int id;
+	int err;
+	odbx_t *odbx;
+
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"rlz", &odbx_link, &option, &value) == SUCCESS) {
+		id = -1;
+	} else if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"lz", &option, &value) == SUCCESS) {
+		odbx_link = NULL;
+		id = ODBX_G(default_link);
+		CHECK_DEFAULT_LINK(id);
+	}
+	else {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Requires 2 or 3 arguments");
+		RETURN_FALSE;
+	}
+
+	if (odbx_link == NULL && id == -1) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE2(odbx, odbx_t *, &odbx_link, id, "OpenDBX Link", le_link, le_plink);
+
+	Z_LVAL_P(return_value) = odbx_set_option(odbx, option, (void **)&value);
+	Z_TYPE_P(return_value) = IS_LONG;
+}
+
+PHP_FUNCTION(odbx_get_option)
+{
+	zval **odbx_link;
+	unsigned long option;
+	zval **value;
+
+	int id;
+	int err;
+	odbx_t *odbx;
+
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"rlz", &odbx_link, &option, &value) == SUCCESS) {
+		id = -1;
+	} else if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"lz", &option, &value) == SUCCESS) {
+		odbx_link = NULL;
+		id = ODBX_G(default_link);
+		CHECK_DEFAULT_LINK(id);
+	}
+	else {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Requires 2 or 3 arguments");
+		RETURN_FALSE;
+	}
+
+	if (odbx_link == NULL && id == -1) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE2(odbx, odbx_t *, &odbx_link, id, "OpenDBX Link", le_link, le_plink);
+
+	Z_LVAL_P(return_value) = odbx_get_option(odbx, option, (void **)&value);
+	Z_TYPE_P(return_value) = IS_LONG;
+}
+
+PHP_FUNCTION(odbx_query)
+{
+	zval **odbx_link;
+	char *stmt = NULL;
+	unsigned long stmt_len;
+
+
+	int id;
+	int err;
+	odbx_t *odbx;
+	odbx_result_t* result;
+	struct timeval tv = { 3, 0 };
+
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"rs", &odbx_link, &stmt, &stmt_len) == SUCCESS) {
+		id = -1;
+	} else if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+				"s", &stmt, &stmt_len) == SUCCESS) {
+		odbx_link = NULL;
+		id = ODBX_G(default_link);
+		CHECK_DEFAULT_LINK(id);
+	}
+	else {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Requires 1 or 2 arguments");
+		RETURN_FALSE;
+	}
+
+	if (odbx_link == NULL && id == -1) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE2(odbx, odbx_t *, &odbx_link, id, "OpenDBX Link", le_link, le_plink);
+
+	// query
+	if( ( err = odbx_query( odbx, stmt, stmt_len ) ) < 0 ) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING,
+						 "odbx_query(): %s", odbx_error( odbx, err ));
+                RETURN_FALSE;
+	}
+
+	// result
+	if ( ( err = odbx_result( odbx, &result, &tv, 0 ) ) < 0 ) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING,
+						 "odbx_result(): %s", odbx_error( odbx, err ));
+                RETURN_FALSE;
+	}
+
+
+	switch( err )
+	{
+		case 1:
+			// NOTE: Retrieving the result is not (!) canceled
+			php_error_docref(NULL TSRMLS_CC, E_WARNING,
+					"odbx_result(): Timeout");
+			odbx_result_finish( result );
+			RETURN_FALSE;
+			break;
+
+		default:
+			ZEND_REGISTER_RESOURCE(return_value, result, le_result);
+			break;
+	}
+}
+
+PHP_FUNCTION(odbx_column_count)
+{
+	zval **odbx_result;
+
+	int id;
+	int err;
+	odbx_t *odbx;
+	odbx_result_t* result;
+
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r", &odbx_result) == FAILURE) {
+		return;
+	}
+
+	if (odbx_result == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(result, odbx_result_t *, &odbx_result, -1, "OpenDBX result", le_result);
+
+	
+	Z_LVAL_P(return_value) = odbx_column_count(result);
+	Z_TYPE_P(return_value) = IS_LONG;
+
+}
+
+PHP_FUNCTION(odbx_column_name)
+{
+	zval **odbx_result;
+	unsigned long pos;
+
+	int id;
+	int err;
+	odbx_t *odbx;
+	odbx_result_t* result;
+
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl", &odbx_result, &pos) == FAILURE) {
+		return;
+	}
+
+	if (odbx_result == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(result, odbx_result_t *, &odbx_result, -1, "OpenDBX result", le_result);
+
+	RETURN_STRING(odbx_column_name(result, pos), 1);	
+
+}
+
+PHP_FUNCTION(odbx_column_type)
+{
+	zval **odbx_result;
+	unsigned long pos;
+
+	int id;
+	int err;
+	odbx_t *odbx;
+	odbx_result_t* result;
+
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl", &odbx_result, &pos) == FAILURE) {
+		return;
+	}
+
+	if (odbx_result == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(result, odbx_result_t *, &odbx_result, -1, "OpenDBX result", le_result);
+
+	
+	Z_LVAL_P(return_value) = odbx_column_type(result, pos);
+	Z_TYPE_P(return_value) = IS_LONG;
+
+}
+
+PHP_FUNCTION(odbx_rows_affected)
+{
+	zval **odbx_result;
+
+	int id;
+	int err;
+	odbx_t *odbx;
+	odbx_result_t* result;
+
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r", &odbx_result) == FAILURE) {
+		return;
+	}
+
+	if (odbx_result == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(result, odbx_result_t *, &odbx_result, -1, "OpenDBX result", le_result);
+
+	
+	Z_LVAL_P(return_value) = odbx_rows_affected(result);
+	Z_TYPE_P(return_value) = IS_LONG;
+
+}
+
+PHP_FUNCTION(odbx_row_fetch)
+{
+	zval **odbx_result;
+
+	int id;
+	int err;
+	odbx_t *odbx;
+	odbx_result_t* result;
+
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r", &odbx_result) == FAILURE) {
+		return;
+	}
+
+	if (odbx_result == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(result, odbx_result_t *, &odbx_result, -1, "OpenDBX result", le_result);
+
+	
+	Z_LVAL_P(return_value) = odbx_row_fetch(result);
+	Z_TYPE_P(return_value) = IS_LONG;
+
+}
+
+PHP_FUNCTION(odbx_field_value)
+{
+	zval **odbx_result;
+	unsigned long pos;
+
+	int id;
+	int err;
+	odbx_t *odbx;
+	odbx_result_t* result;
+
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl", &odbx_result, &pos) == FAILURE) {
+		return;
+	}
+
+	if (odbx_result == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(result, odbx_result_t *, &odbx_result, -1, "OpenDBX result", le_result);
+
+	RETURN_STRING((char *)odbx_field_value(result, pos), 1);	
+
+}
+
+PHP_FUNCTION(odbx_field_length)
+{
+	zval **odbx_result;
+	unsigned long pos;
+
+	int id;
+	int err;
+	odbx_t *odbx;
+	odbx_result_t* result;
+
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl", &odbx_result, &pos) == FAILURE) {
+		return;
+	}
+
+	if (odbx_result == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(result, odbx_result_t *, &odbx_result, -1, "OpenDBX result", le_result);
+
+	
+	Z_LVAL_P(return_value) = odbx_field_length(result, pos);
+	Z_TYPE_P(return_value) = IS_LONG;
+
 }
 
 PHP_FUNCTION(odbx_unbind)

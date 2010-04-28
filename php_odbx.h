@@ -49,6 +49,16 @@ PHP_FUNCTION(odbx_error_type);
 PHP_FUNCTION(odbx_unbind);
 PHP_FUNCTION(odbx_capabilities);
 PHP_FUNCTION(odbx_escape);
+PHP_FUNCTION(odbx_set_option);
+PHP_FUNCTION(odbx_get_option);
+PHP_FUNCTION(odbx_query);
+PHP_FUNCTION(odbx_column_count);
+PHP_FUNCTION(odbx_column_name);
+PHP_FUNCTION(odbx_column_type);
+PHP_FUNCTION(odbx_field_length);
+PHP_FUNCTION(odbx_field_value);
+PHP_FUNCTION(odbx_rows_affected);
+//PHP_FUNCTION(odbx_);
 
 #define PHP_ODBX_VERSION "1.0.0"
 
