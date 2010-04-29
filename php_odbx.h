@@ -52,6 +52,7 @@ PHP_FUNCTION(odbx_escape);
 PHP_FUNCTION(odbx_set_option);
 PHP_FUNCTION(odbx_get_option);
 PHP_FUNCTION(odbx_query);
+PHP_FUNCTION(odbx_row_fetch);
 PHP_FUNCTION(odbx_column_count);
 PHP_FUNCTION(odbx_column_name);
 PHP_FUNCTION(odbx_column_type);

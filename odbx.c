@@ -77,6 +77,7 @@ zend_function_entry odbx_functions[] = {
 	PHP_FE(odbx_set_option, NULL)
 	PHP_FE(odbx_get_option, NULL)
 	PHP_FE(odbx_query, NULL)
+	PHP_FE(odbx_row_fetch, NULL)
 	PHP_FE(odbx_column_count, NULL)
 	PHP_FE(odbx_column_name, NULL)
 	PHP_FE(odbx_column_type, NULL)
@@ -928,8 +929,6 @@ PHP_FUNCTION(odbx_column_count)
 {
 	zval **odbx_result;
 
-	int id;
-	int err;
 	odbx_t *odbx;
 	odbx_result_t* result;
 
@@ -955,8 +954,6 @@ PHP_FUNCTION(odbx_column_name)
 	zval **odbx_result;
 	unsigned long pos;
 
-	int id;
-	int err;
 	odbx_t *odbx;
 	odbx_result_t* result;
 
@@ -980,8 +977,6 @@ PHP_FUNCTION(odbx_column_type)
 	zval **odbx_result;
 	unsigned long pos;
 
-	int id;
-	int err;
 	odbx_t *odbx;
 	odbx_result_t* result;
 
@@ -1006,8 +1001,6 @@ PHP_FUNCTION(odbx_rows_affected)
 {
 	zval **odbx_result;
 
-	int id;
-	int err;
 	odbx_t *odbx;
 	odbx_result_t* result;
 
@@ -1032,8 +1025,6 @@ PHP_FUNCTION(odbx_row_fetch)
 {
 	zval **odbx_result;
 
-	int id;
-	int err;
 	odbx_t *odbx;
 	odbx_result_t* result;
 
@@ -1059,8 +1050,6 @@ PHP_FUNCTION(odbx_field_value)
 	zval **odbx_result;
 	unsigned long pos;
 
-	int id;
-	int err;
 	odbx_t *odbx;
 	odbx_result_t* result;
 
@@ -1075,7 +1064,7 @@ PHP_FUNCTION(odbx_field_value)
 
 	ZEND_FETCH_RESOURCE(result, odbx_result_t *, &odbx_result, -1, "OpenDBX result", le_result);
 
-	RETURN_STRING((char *)odbx_field_value(result, pos), 1);	
+	RETURN_STRING((char *)odbx_field_value(result, pos), 1);
 
 }
 
@@ -1084,8 +1073,6 @@ PHP_FUNCTION(odbx_field_length)
 	zval **odbx_result;
 	unsigned long pos;
 
-	int id;
-	int err;
 	odbx_t *odbx;
 	odbx_result_t* result;
 

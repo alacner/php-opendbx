@@ -26,24 +26,30 @@ var_dump($res = odbx_query("insert into odbxtest(b) values(". time() .")"));
 //var_dump($res = odbx_query("update odbxtest set b=". time()));
 echo "\n-----------\n";
 var_dump(odbx_rows_affected($res));
-var_dump($res = odbx_query("SELECT count(*) FROM odbxtest"));
-var_dump($res2 = odbx_query("SELECT * FROM odbxtest"));
+var_dump($result = odbx_query("SELECT count(*) FROM odbxtest"));
+var_dump($result2 = odbx_query("SELECT * FROM odbxtest limit 100"));
 echo "\n-----------\n";
-var_dump(odbx_column_count($res2));
-var_dump(odbx_column_name($res2, 0));
-var_dump(odbx_column_type($res2, 0));
-var_dump(odbx_field_length($res2, 0));
-var_dump(odbx_field_value($res2, 0));
 
-var_dump(odbx_column_name($res2, 1));
-var_dump(odbx_column_type($res2, 1));
-var_dump(odbx_field_length($res2, 1));
-var_dump(odbx_field_value($res2, 1));
-echo "\n-----------\n";
-/*
-while(1 && true)
-{
-	var_dump($a = odbx_init("pgsql", "127.0.0.1","1234",true));
-	sleep(1);
+//var_dump(odbx_row_fetch($result));
+echo "\n========= result ======================\n";
+while (odbx_row_fetch($result)) {
+	for( $i = 0; $i < odbx_column_count( $result ); $i++ ) {
+		printf( "Name: %s\n", odbx_column_name( $result, $i ) );
+		printf( "Type: %d\n", odbx_column_type( $result, $i ) );
+		printf( "Length: %d\n", odbx_field_length( $result, $i ) );
+		printf( "Value: %s\n", odbx_field_value( $result, $i ) );
+		echo "\n-----------\n";
+	}
 }
-*/
+
+echo "\n========= result2 ======================\n";
+while (odbx_row_fetch($result2)) {
+	for( $i = 0; $i < odbx_column_count( $result2 ); $i++ ) {
+		printf( "Name: %s\n", odbx_column_name( $result2, $i ) );
+		printf( "Type: %d\n", odbx_column_type( $result2, $i ) );
+		printf( "Length: %d\n", odbx_field_length( $result2, $i ) );
+		printf( "Value: %s\n", odbx_field_value( $result2, $i ) );
+		echo "\n-----------\n";
+	}
+}
+echo "\n===============================\n";
