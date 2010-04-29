@@ -56,7 +56,7 @@
 #include <odbx.h>
 
 /* True global resources - no need for thread safety here */
-static int le_link, le_plink, le_result, le_lofp, le_string;
+static int le_link, le_plink, le_result, le_lo, le_string;
 
 ZEND_DECLARE_MODULE_GLOBALS(odbx)
 static PHP_GINIT_FUNCTION(odbx);
@@ -84,7 +84,11 @@ zend_function_entry odbx_functions[] = {
 	PHP_FE(odbx_field_length, NULL)
 	PHP_FE(odbx_field_value, NULL)
 	PHP_FE(odbx_rows_affected, NULL)
-	//PHP_FE(odbx_, NULL)
+	PHP_FE(odbx_result_finish, NULL)
+	PHP_FE(odbx_lo_open, NULL)
+	PHP_FE(odbx_lo_read, NULL)
+	PHP_FE(odbx_lo_write, NULL)
+	PHP_FE(odbx_lo_close, NULL)
 	{NULL, NULL, NULL}
 };
 /* }}} */
@@ -204,6 +208,12 @@ static void _free_odbx_result(zend_rsrc_list_entry *rsrc TSRMLS_DC)
 }
 /* }}} */
 
+static void _free_odbx_lo(zend_rsrc_list_entry *rsrc TSRMLS_DC)
+{
+        odbx_lo_t *lo = (odbx_lo_t *)rsrc->ptr;
+
+	odbx_lo_close(lo);
+}
 
 /* {{{ PHP_MINIT_FUNCTION
  */
@@ -215,6 +225,7 @@ PHP_MINIT_FUNCTION(odbx)
         le_link = zend_register_list_destructors_ex(_close_odbx_link, NULL, "odbx link", module_number);
 	le_plink = zend_register_list_destructors_ex(NULL, _close_odbx_plink, "odbx link persistent", module_number);
         le_result = zend_register_list_destructors_ex(_free_odbx_result, NULL, "odbx result", module_number);
+        le_lo = zend_register_list_destructors_ex(_free_odbx_lo, NULL, "odbx lo", module_number);
         Z_TYPE(odbx_module_entry) = type;
 
 
@@ -1090,6 +1101,151 @@ PHP_FUNCTION(odbx_field_length)
 	
 	Z_LVAL_P(return_value) = odbx_field_length(result, pos);
 	Z_TYPE_P(return_value) = IS_LONG;
+
+}
+
+PHP_FUNCTION(odbx_result_finish)
+{
+	zval **odbx_result;
+	unsigned long pos;
+
+	odbx_t *odbx;
+	odbx_result_t* result;
+
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl", &odbx_result, &pos) == FAILURE) {
+		return;
+	}
+
+	if (odbx_result == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(result, odbx_result_t *, &odbx_result, -1, "OpenDBX result", le_result);
+
+        if (Z_LVAL_PP(odbx_result) == 0) {
+                RETURN_FALSE;
+        }
+        zend_list_delete(Z_LVAL_PP(odbx_result));
+        RETURN_TRUE;
+}
+
+PHP_FUNCTION(odbx_lo_open)
+{
+	zval **odbx_result;
+	char *value = NULL;
+	int value_len;
+
+	odbx_t *odbx;
+	odbx_result_t* result;
+	odbx_lo_t* lo;
+
+	int err;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rs", &odbx_result, &value, &value_len) == FAILURE) {
+		return;
+	}
+
+	if (odbx_result == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(result, odbx_result_t *, &odbx_result, -1, "OpenDBX result", le_result);
+
+	
+	// result
+	if ( ( err = odbx_lo_open( result, &lo, &value ) ) < 0 ) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING,
+						 "odbx_lo_open(): %s", odbx_error( odbx, err ));
+                RETURN_FALSE;
+	}
+
+
+	ZEND_REGISTER_RESOURCE(return_value, lo, le_lo);
+
+}
+
+PHP_FUNCTION(odbx_lo_read)
+{
+	zval **odbx_lo;
+	void* buffer;
+	size_t buflen;
+
+	odbx_t *odbx;
+	odbx_result_t* result;
+	odbx_lo_t* lo;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r", &odbx_lo) == FAILURE) {
+		return;
+	}
+
+	if (odbx_lo == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(lo, odbx_lo_t *, &odbx_lo, -1, "OpenDBX lo", le_lo);
+
+	
+	odbx_lo_read(lo, &buffer, &buflen);
+
+	RETURN_STRING(buffer, 1);
+
+}
+
+PHP_FUNCTION(odbx_lo_write)
+{
+	zval **odbx_lo;
+	zval **buffer;
+
+	odbx_t *odbx;
+	odbx_result_t* result;
+	odbx_lo_t* lo;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rz", &odbx_lo, &buffer) == FAILURE) {
+		return;
+	}
+
+	if (odbx_lo == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(lo, odbx_lo_t *, &odbx_lo, -1, "OpenDBX lo", le_lo);
+
+	Z_LVAL_P(return_value) = odbx_lo_write(lo, (void*)buffer, sizeof(buffer));
+	Z_TYPE_P(return_value) = IS_LONG;
+
+}
+
+PHP_FUNCTION(odbx_lo_close)
+{
+	zval **odbx_lo;
+	void* buffer;
+	size_t buflen;
+
+	odbx_t *odbx;
+	odbx_result_t* result;
+	odbx_lo_t* lo;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r", &odbx_lo) == FAILURE) {
+		return;
+	}
+
+	if (odbx_lo == NULL) {
+		RETURN_FALSE;
+	}
+
+	ZEND_FETCH_RESOURCE(lo, odbx_lo_t *, &odbx_lo, -1, "OpenDBX lo", le_lo);
+
+
+        if (odbx_lo_close(lo) < 0) {
+                php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to close OpenDBX large object descriptor.");
+                RETVAL_FALSE;
+        } else {
+                RETVAL_TRUE;
+        }
+
+        zend_list_delete(Z_RESVAL_PP(odbx_lo));
+        return;
 
 }
 

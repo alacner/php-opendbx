@@ -59,7 +59,11 @@ PHP_FUNCTION(odbx_column_type);
 PHP_FUNCTION(odbx_field_length);
 PHP_FUNCTION(odbx_field_value);
 PHP_FUNCTION(odbx_rows_affected);
-//PHP_FUNCTION(odbx_);
+PHP_FUNCTION(odbx_result_finish);
+PHP_FUNCTION(odbx_lo_open);
+PHP_FUNCTION(odbx_lo_read);
+PHP_FUNCTION(odbx_lo_write);
+PHP_FUNCTION(odbx_lo_close);
 
 #define PHP_ODBX_VERSION "1.0.0"
 
@@ -75,7 +79,7 @@ ZEND_BEGIN_MODULE_GLOBALS(odbx)
         long num_links,num_persistent;
         long max_links,max_persistent;
 	long allow_persistent;
-        //int le_lofp,le_string;
+        //int le_lo,le_string;
 
 	char *default_host;
 	//char *global_string;
